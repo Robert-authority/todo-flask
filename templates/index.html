@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <div class="container">
+    <header class="header">
+      <h1>To-Do List</h1>
+      <p class="subtitle">Tugas rapi, hidup damai 😌</p>
+    </header>
+
+    <form class="task-form" action="/add" method="POST">
+      <input type="text" name="title" placeholder="Masukkan tugas..." required>
+      <input type="date" name="deadline" required>
+      <button type="submit">Tambah</button>
+    </form>
+
+    {% if tasks %}
+      <ul class="task-list">
+        {% for task in tasks %}
+          <li class="task-item color-{{ (loop.index0 % 5) + 1 }} {% if task.done == 1 %}done{% endif %}" data-task>
+
+            <a class="check-btn" href="/toggle/{{ task.id }}" title="Tandai selesai">
+              {% if task.done == 1 %}
+                ✅
+              {% else %}
+                ⬜
+              {% endif %}
+            </a>
+
+            <div class="task-info">
+              <div class="task-title">{{ task.title }}</div>
+              <div class="task-deadline">📅 {{ task.deadline }}</div>
+            </div>
+
+            {% if task.done == 1 %}
+              <span class="status-badge done">Selesai</span>
+            {% else %}
+              <span class="status-badge todo">Belum</span>
+            {% endif %}
+
+            <a class="delete-btn" href="/delete/{{ task.id }}" title="Hapus tugas">
+              🗑
+            </a>
+
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">Belum ada tugas. Tambahin dulu satu 😄</p>
+    {% endif %}
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
