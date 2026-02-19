@@ -4,14 +4,13 @@ import os
 
 app = Flask(__name__)
 
-DB_NAME = "todo.db"
+# Lokasi database (Railway aman)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "todo.db")
 
 
-# =========================
-# DATABASE
-# =========================
 def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -22,35 +21,38 @@ def init_db():
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
-            deadline TEXT NOT NULL,
-            done INTEGER NOT NULL DEFAULT 0
+            deadline TEXT,
+            is_done INTEGER DEFAULT 0
         )
     """)
     conn.commit()
     conn.close()
 
 
-# =========================
-# ROUTES
-# =========================
 @app.route("/")
 def index():
+    # PENTING: pastikan tabel selalu ada
+    init_db()
+
     conn = get_db_connection()
     tasks = conn.execute("SELECT * FROM tasks ORDER BY id DESC").fetchall()
     conn.close()
+
     return render_template("index.html", tasks=tasks)
 
 
 @app.route("/add", methods=["POST"])
 def add_task():
+    init_db()
+
     title = request.form.get("title")
     deadline = request.form.get("deadline")
 
-    if title and deadline:
+    if title:
         conn = get_db_connection()
         conn.execute(
-            "INSERT INTO tasks (title, deadline, done) VALUES (?, ?, ?)",
-            (title, deadline, 0)
+            "INSERT INTO tasks (title, deadline, is_done) VALUES (?, ?, 0)",
+            (title, deadline)
         )
         conn.commit()
         conn.close()
@@ -58,38 +60,34 @@ def add_task():
     return redirect(url_for("index"))
 
 
-@app.route("/toggle/<int:task_id>")
+@app.route("/toggle/<int:task_id>", methods=["POST"])
 def toggle_task(task_id):
+    init_db()
+
     conn = get_db_connection()
-    task = conn.execute("SELECT done FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    task = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
 
     if task:
-        new_done = 0 if task["done"] == 1 else 1
-        conn.execute("UPDATE tasks SET done = ? WHERE id = ?", (new_done, task_id))
+        new_status = 0 if task["is_done"] == 1 else 1
+        conn.execute("UPDATE tasks SET is_done = ? WHERE id = ?", (new_status, task_id))
         conn.commit()
 
     conn.close()
     return redirect(url_for("index"))
 
 
-@app.route("/delete/<int:task_id>")
+@app.route("/delete/<int:task_id>", methods=["POST"])
 def delete_task(task_id):
+    init_db()
+
     conn = get_db_connection()
     conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
     conn.commit()
     conn.close()
+
     return redirect(url_for("index"))
 
 
-# =========================
-# AUTO INIT DB (IMPORTANT)
-# =========================
-init_db()
-
-
-# =========================
-# RUN
-# =========================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    init_db()
+    app.run(debug=True)
